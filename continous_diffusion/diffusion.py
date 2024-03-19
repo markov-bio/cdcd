@@ -14,7 +14,7 @@ import numpy as np
 from .scheduling import AdaptiveSchedule
 from .loss import Loss
 
-class MaskDiffusion(nn.Module):
+class Diffusion(nn.Module):
     def __init__(self, model:nn.Module, loss:nn.Module, conditioning:nn.Module):
         super().__init__()
 
@@ -32,18 +32,18 @@ class MaskDiffusion(nn.Module):
     def make_sample(self,tokens:torch.Tensor):
 
         t = self.schedule.sample(shape=(tokens.shape[0],))
-        noise = t.to(tokens.device)  #Index on cpu then send resulting tensor to cuda
+        sigma = t.to(tokens.device)  #Index on cpu then send resulting tensor to cuda
 
         x=self.embedder(tokens)
         
-        standard_deviation_normalizer=torch.sqrt(torch.tensor(self.embedder.embedding_dim)/(noise**2+1))
+        standard_deviation_normalizer=torch.sqrt(torch.tensor(self.embedder.embed_dim)/(sigma**2+1))
         x=einops.einsum(x,standard_deviation_normalizer,'b ..., b -> b ...')
         
-        return x,noise
+        return x,sigma
 
     # for Composer, we need this to be called forward()
-    def forward(self,x,noise):
-        conditioning=self.conditioning(noise) 
+    def forward(self,x,sigma):
+        conditioning=self.conditioning(sigma) 
 
         x_0=self.model(x,conditioning)
         return x

@@ -1,18 +1,12 @@
-import math
-import os
-from tempfile import TemporaryDirectory
-from typing import Tuple
-
 import torch
 from torch import nn, Tensor
-from torch.nn import TransformerEncoder, TransformerEncoderLayer
-from torch.utils.data import dataset
+import math
 
 from .DiT_block import DiTBlock
 # taken from https://pytorch.org/tutorials/beginner/transformer_tutorial.html
 class TransformerModel(nn.Module):
 
-    def __init__(self, embed_dim, num_heads, cond_dim, n_blocks, max_len):
+    def __init__(self, embed_dim, num_heads, cond_dim, n_blocks, max_len=5000):
         super().__init__()
         self.pos_encoder = PositionalEncoding(embed_dim)
 

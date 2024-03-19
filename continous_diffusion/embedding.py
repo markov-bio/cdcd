@@ -5,10 +5,10 @@ from torch.nn import functional as F
 
 
 class Embedder(nn.Module):
-    def __init__(self, num_embeddings, embedding_dim):
+    def __init__(self, num_embeddings, embed_dim):
         super().__init__()
-        self.embedding = nn.Embedding(num_embeddings, embedding_dim)
-        self.embedding_dim=embedding_dim
+        self.embedding = nn.Embedding(num_embeddings, embed_dim)
+        self.embed_dim=embed_dim
     
     def forward(self, x):
         # Get embeddings

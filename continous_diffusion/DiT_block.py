@@ -21,14 +21,13 @@ def apply_scale_shift(x, scale, shift=None):
     scale=scale+1
     x=einops.einsum(x,scale,'b ... c, b c -> b ... c')
     
-    if shift is None:
-        return F.layer_norm(x, normalized_shape=(x.shape[-1],))
-    
-    new_shape=[1]*x.dim()
-    new_shape[0],new_shape[-1]=shift.shape[0],shift.shape[-1]
-    shift=shift.view(new_shape)
+    if shift is not None: 
+        new_shape=[1]*x.dim()
+        new_shape[0],new_shape[-1]=shift.shape[0],shift.shape[-1]
+        shift=shift.view(new_shape)
+        x=x+shift
 
-    return F.layer_norm(x+shift, normalized_shape=(x.shape[-1],))
+    return F.layer_norm(x, normalized_shape=(x.shape[-1],))
 
 
 
