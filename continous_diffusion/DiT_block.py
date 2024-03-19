@@ -80,7 +80,7 @@ class DiTBlock(nn.Module):
             torch.Tensor: tensor x.shape
         """
         if conditioning is None: 
-            conditioning=torch.zeros(self.cond_dim, device=x.device)
+            conditioning=torch.zeros(x.shape[0],self.cond_dim, device=x.device)
         alpha_1,beta_1,gamma_1,alpha_2,beta_2,gamma_2=self.make_scale_shift(conditioning)
 
         res=x.clone()

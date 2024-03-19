@@ -15,8 +15,9 @@ class TransformerModel(nn.Module):
     def forward(self, x: Tensor, conditioning:Tensor) -> Tensor:
 
         x = self.pos_encoder(x)
-        output = self.DiT_blocks(x, conditioning)
-        return output
+        for block in self.DiT_blocks:
+            x=block(x, conditioning)
+        return x
     
     
 class PositionalEncoding(nn.Module):
@@ -26,9 +27,9 @@ class PositionalEncoding(nn.Module):
 
         position = torch.arange(max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, embed_dim, 2) * (-math.log(10000.0) / embed_dim))
-        pe = torch.zeros(max_len, 1, embed_dim)
-        pe[:, 0, 0::2] = torch.sin(position * div_term)
-        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        pe = torch.zeros(max_len, embed_dim)
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe.unsqueeze(0))
 
     def forward(self, x: Tensor) -> Tensor:
