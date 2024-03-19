@@ -15,7 +15,7 @@ from .scheduling import AdaptiveSchedule
 from .loss import Loss
 
 class MaskDiffusion(nn.Module):
-    def __init__(self, model:nn.Module, loss:nn.Module):
+    def __init__(self, model:nn.Module, loss:nn.Module, conditioning:nn.Module):
         super().__init__()
 
         self.model=model
@@ -24,6 +24,8 @@ class MaskDiffusion(nn.Module):
         self.embedder= loss.embedder
         self.un_embedder=loss.un_embedder
         self.schedule=loss.schedule
+        
+        self.conditioning=conditioning
 
         self.n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
         
@@ -41,9 +43,9 @@ class MaskDiffusion(nn.Module):
 
     # for Composer, we need this to be called forward()
     def forward(self,x,noise):
-        time_conditioning=self.time_conditioning(noise) 
+        conditioning=self.conditioning(noise) 
 
-        x_0=self.model(x,time_conditioning)
+        x_0=self.model(x,conditioning)
         return x
 
     def alphaXscore(self,x,noise):
