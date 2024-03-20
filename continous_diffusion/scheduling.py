@@ -77,14 +77,8 @@ class AdaptiveSchedule(nn.Module):
         timesteps = self.transforms(indexes)
         return torch.clamp(timesteps,self.tmin, self.tmax)
 
-    def add_data(self,entropy:torch.Tensor, times):
-        #TODO: in the future we might need to write all of this into a file
-        if isinstance(times, torch.Tensor):
-            times=times.detach().to('cpu').tolist()
-        if isinstance(times,float):
-            times=[times]
-        if len(times)==1:
-            times=times*entropy.shape[0]
+    def add_data(self,entropy:torch.Tensor, times:torch.Tensor):
+        times=times.detach().to('cpu').tolist()
         entropy=entropy.detach().to('cpu').tolist()
 
         for t,s in zip(times,entropy):
@@ -94,6 +88,35 @@ class AdaptiveSchedule(nn.Module):
     def update_distribution(self): 
         pass
             
+    def cdf(self, x, mu, sigma, height, offset):
+        pass 
+
+    def plot_entropy_time_curve(self, filename='et.png'):
+
+        # Calculate logarithmic indices for coloring
+        indices = np.arange(1, len(self.times) + 1)
+        log_indices = np.log(indices)[::-1]  # Reverse to give more weight to recent points
+        log_indices = (log_indices - np.min(log_indices)) / (np.max(log_indices) - np.min(log_indices))
+
+        # Scatter plot of entropy vs. time
+        plt.scatter(self.times, self.entropy, c=log_indices, cmap='viridis', label='datapoints')
+
+
+        # Plot the best fit function
+        t = np.logspace(np.log10(self.tmin), np.log10(self.tmax), 500, base=10.)
+        s = self.cdf(t, *self.optimal_parameters)
+
+        plt.plot(t, s, label='Best fit')
+        plt.title('Entropy-Time Curve')
+        plt.xlabel('Time')
+        plt.ylabel('Entropy')
+        plt.xscale('log')
+        plt.legend()
+
+        # Save the plot to a file
+        plt.savefig(filename)
+
+
 class LogisticSchedule(AdaptiveSchedule):
     def __init__(self, tmin, tmax, mu, sigma, height, offset):
         super().__init__(tmin, tmax, mu, sigma, height, offset)
@@ -136,41 +159,6 @@ class CauchySchedule(AdaptiveSchedule):
 
             
 
-def plot_entropy_time_curve(entropy, times, function, optimal_parameters=[5,5,np.log(5)], tmin=1e-3, tmax=80, filename='et.png'):
-    """Given two lists of times and entropy representing the x and y axis, it plots them
-    in the viridis colormap where the color is proportional to the logarithm of the index.
-
-    Args:
-        entropy (list): List of entropy values.
-        times (list): Corresponding times for the entropy values.
-        function (callable): The function to plot, representing the best fit.
-        optimal_parameters (tuple): Parameters to pass to the function.
-        tmin (float, optional): Minimum time for the function plot. Defaults to 1e-3.
-        tmax (float, optional): Maximum time for the function plot. Defaults to 80.
-        filename (str, optional): The filename for saving the plot. Defaults to 'et.png'.
-    """
-
-    # Calculate logarithmic indices for coloring
-    indices = np.arange(1, len(times) + 1)
-    log_indices = np.log(indices)[::-1]  # Reverse to give more weight to recent points
-    log_indices = (log_indices - np.min(log_indices)) / (np.max(log_indices) - np.min(log_indices))
-
-    # Scatter plot of entropy vs. time
-    plt.scatter(times, entropy, c=log_indices, cmap='viridis', label='datapoints')
-
-    # Plot the best fit function
-    t = np.logspace(np.log10(tmin), np.log10(tmax), 500, base=10.)
-    s = function(t, *optimal_parameters)
-
-    plt.plot(t, s, label='Best fit')
-    plt.title('Entropy-Time Curve')
-    plt.xlabel('Time')
-    plt.ylabel('Entropy')
-    plt.xscale('log')
-    plt.legend()
-
-    # Save the plot to a file
-    plt.savefig(filename)
 
     
     
