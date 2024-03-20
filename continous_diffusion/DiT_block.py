@@ -38,7 +38,11 @@ class SelfAttention(nn.Module):
         self.embed_dim=embed_dim
         self.num_heads=num_heads
         self.linear=nn.Linear(embed_dim,3*embed_dim) #this can be generalized
-    
+
+        self.feedforward=nn.Linear(embed_dim,embed_dim)
+        nn.init.zeros_(self.feedforward.weight)
+        nn.init.zeros_(self.feedforward.bias)
+
     def forward(self,x):
 
         x=self.linear(x)
@@ -52,7 +56,8 @@ class SelfAttention(nn.Module):
         x=F.scaled_dot_product_attention(q,k,v, scale=1)
 
         x=einops.rearrange(x,'... h l c -> ... l (h c)')
-        return x
+
+        return self.feedforward(x)
 
 
 
@@ -67,9 +72,13 @@ class DiTBlock(nn.Module):
         self.layernorm1=nn.LayerNorm(torch.broadcast_shapes((embed_dim,)))
         self.attention=SelfAttention(embed_dim, num_heads) 
         
-        self.feedforward=nn.Linear(embed_dim,embed_dim) 
         self.layernorm2=nn.LayerNorm(torch.broadcast_shapes((embed_dim,)))
 
+        self.feedforward=nn.Linear(embed_dim,embed_dim) 
+
+        nn.init.zeros_(self.feedforward.weight)
+        nn.init.zeros_(self.feedforward.bias)
+        
     def forward(self,x:torch.Tensor,conditioning:torch.Tensor|None=None)->torch.Tensor:
         """
         Args:

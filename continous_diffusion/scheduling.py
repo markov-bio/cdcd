@@ -92,7 +92,7 @@ class AdaptiveSchedule(nn.Module):
         pass 
 
     def plot_entropy_time_curve(self, filename='et.png'):
-
+        plt.close()
         # Calculate logarithmic indices for coloring
         indices = np.arange(1, len(self.times) + 1)
         log_indices = np.log(indices)[::-1]  # Reverse to give more weight to recent points
@@ -104,17 +104,19 @@ class AdaptiveSchedule(nn.Module):
 
         # Plot the best fit function
         t = np.logspace(np.log10(self.tmin), np.log10(self.tmax), 500, base=10.)
-        s = self.cdf(t, *self.optimal_parameters)
+        s = self.cdf(t, *self.optimal_parameters.detach().cpu().tolist())
 
         plt.plot(t, s, label='Best fit')
         plt.title('Entropy-Time Curve')
         plt.xlabel('Time')
         plt.ylabel('Entropy')
         plt.xscale('log')
+        plt.yscale('log')
         plt.legend()
 
         # Save the plot to a file
         plt.savefig(filename)
+        plt.show()
 
 
 class LogisticSchedule(AdaptiveSchedule):

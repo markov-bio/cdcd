@@ -1,5 +1,6 @@
 import torch
 from torch import nn, Tensor
+from torch.nn import functional as F
 import math
 
 from .DiT_block import DiTBlock
@@ -13,10 +14,10 @@ class TransformerModel(nn.Module):
         self.DiT_blocks=nn.Sequential(*[DiTBlock(embed_dim,num_heads,cond_dim,max_len) for _ in range(n_blocks)])
 
     def forward(self, x: Tensor, conditioning:Tensor) -> Tensor:
-
+        x = F.normalize(x,p=2,dim=-1) #critical modification
         x = self.pos_encoder(x)
         for block in self.DiT_blocks:
-            x=block(x, conditioning)
+            x=x+block(x, conditioning)
         return x
     
     

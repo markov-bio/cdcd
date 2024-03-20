@@ -36,8 +36,8 @@ class Diffusion(nn.Module):
         t = self.schedule.sample(shape=(tokens.shape[0],))
         sigma = t.to(tokens.device)  #Index on cpu then send resulting tensor to cuda
 
-        x=self.embedder(tokens)
-        
+        x=self.embedder(tokens) 
+        x=x + einops.einsum(torch.randn_like(x), sigma, 'b ..., b -> b ...') 
         standard_deviation_normalizer=torch.sqrt(torch.tensor(self.embedder.embed_dim)/(sigma**2+1))
         x=einops.einsum(x,standard_deviation_normalizer,'b ..., b -> b ...')
         
