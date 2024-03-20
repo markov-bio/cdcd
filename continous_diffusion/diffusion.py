@@ -13,9 +13,11 @@ import numpy as np
 
 from .scheduling import AdaptiveSchedule
 from .loss import Loss
+from .conditioning import TimeConditioning
+from .model import TransformerModel
 
 class Diffusion(nn.Module):
-    def __init__(self, model:nn.Module, loss:nn.Module, conditioning:nn.Module):
+    def __init__(self, model:TransformerModel, loss:Loss, conditioning:TimeConditioning):
         super().__init__()
 
         self.model=model
@@ -46,15 +48,44 @@ class Diffusion(nn.Module):
         conditioning=self.conditioning(sigma) 
 
         x_0=self.model(x,conditioning)
-        return x
+        return x_0
 
-    def alphaXscore(self,x,noise):
+    def alphaXscore(self,x,sigma):
         #it is called alphaXscore because it returns alpha*score
-        embeddings=self.predict(x,noise)
+        embeddings=self(x,sigma)
 
         prob=F.softmax(self.un_embedder(embeddings), dim=-1)
 
         x_0=self.embedder.expected_embedding(prob)
 
-        return (x-x_0)/noise
+        return (x-x_0)/sigma
     
+    @torch.no_grad()
+    def generate(self, batch_size, sequence_lenght, n_steps, device='cpu'):
+        """
+        It denoises the embedded input x for n_steps starting from t_max to t_min
+
+        Args:
+
+        """
+        shape=(batch_size,sequence_lenght,self.embedder.embed_dim) 
+        
+        x = torch.randn(shape, device=device) * self.schedule.tmax
+        
+        return self.denoise(x,self.schedule.tmax,n_steps,device)
+    
+    @torch.no_grad()
+    def denoise(self, x, noise_level, n_steps, device='cpu'):
+
+        timesteps=self.schedule.make_timesteps(n_steps,tmax=noise_level,device=device).unsqueeze(1)
+
+        sequence_lenght=x.shape[2]
+        for i in tqdm(range(n_steps-1)):        
+            
+            delta_x = self.alphaXscore(x, timesteps[i])
+            delta_t=timesteps[i+1]-timesteps[i]
+            x = x - delta_x * delta_t
+            
+            assert torch.any(torch.isnan(x)).item() is False, 'generator output is NaN'
+        
+        return x 
