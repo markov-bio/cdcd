@@ -4,6 +4,8 @@ from torch.nn import functional as F
 
 import einops
 
+from .RoPe import RotaryEmbedding
+
 class MakeScaleShift(nn.Module):
     def __init__(self, cond_dim, embed_dim):
         super().__init__()
@@ -32,7 +34,7 @@ def apply_scale_shift(x, scale, shift=None):
 
 
 class SelfAttention(nn.Module):
-    def __init__(self,embed_dim,num_heads):
+    def __init__(self,embed_dim:int,num_heads:int,rope:RotaryEmbedding):
         super().__init__()
 
         self.embed_dim=embed_dim
@@ -42,16 +44,20 @@ class SelfAttention(nn.Module):
         self.feedforward=nn.Linear(embed_dim,embed_dim)
         nn.init.zeros_(self.feedforward.weight)
         nn.init.zeros_(self.feedforward.bias)
+        
+        self.rope=rope
 
     def forward(self,x):
 
         x=self.linear(x)
         x=einops.rearrange(x,'... l (h c) -> ... h l c', h=self.num_heads)       
         q,k,v=x.chunk(3,dim=-1)
-        
+
 
         q=F.normalize(q,p=2,dim=-1)
         k=F.normalize(k,p=2,dim=-1)
+
+        q,k=self.rope(q,k)        
 
         x=F.scaled_dot_product_attention(q,k,v, scale=1)
 
@@ -62,7 +68,7 @@ class SelfAttention(nn.Module):
 
 
 class DiTBlock(nn.Module):
-    def __init__(self, embed_dim:int, num_heads, cond_dim, max_len=5000):
+    def __init__(self, embed_dim:int, num_heads:int, cond_dim:int, rope:RotaryEmbedding, max_len=5000):
         super().__init__()
         assert embed_dim>=2*num_heads and embed_dim%num_heads==0, 'the embed_dim must be a multiple of the number of heads'
         self.cond_dim=cond_dim
@@ -70,14 +76,15 @@ class DiTBlock(nn.Module):
 
         self.embed_dim=embed_dim 
         self.layernorm1=nn.LayerNorm(torch.broadcast_shapes((embed_dim,)))
-        self.attention=SelfAttention(embed_dim, num_heads) 
+        self.attention=SelfAttention(embed_dim, num_heads,rope) 
         
         self.layernorm2=nn.LayerNorm(torch.broadcast_shapes((embed_dim,)))
 
         self.feedforward=nn.Linear(embed_dim,embed_dim) 
-
         nn.init.zeros_(self.feedforward.weight)
         nn.init.zeros_(self.feedforward.bias)
+        
+        self.rope=rope
         
     def forward(self,x:torch.Tensor,conditioning:torch.Tensor|None=None)->torch.Tensor:
         """

@@ -107,11 +107,12 @@ class AdaptiveSchedule(nn.Module):
         s = self.cdf(t, *self.optimal_parameters.detach().cpu().tolist())
 
         plt.plot(t, s, label='Best fit')
-        plt.title('Entropy-Time Curve')
-        plt.xlabel('Time')
+        plt.title('Entropy-Sigma Curve')
+        plt.xlabel('Sigma')
         plt.ylabel('Entropy')
         plt.xscale('log')
-        plt.yscale('log')
+        plt.ylim(0,self.height*1.5)
+        # plt.yscale('log')
         plt.legend()
 
         # Save the plot to a file
