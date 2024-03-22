@@ -1,0 +1,7 @@
+torch
+einops
+numpy
+scipy
+matplotlib
+datasets
+tokenizers

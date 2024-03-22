@@ -98,9 +98,9 @@ class AdaptiveSchedule(nn.Module):
         s = self.cdf(t, *self.optimal_parameters.detach().cpu().tolist())
 
         plt.plot(t, s, label='Best fit')
-        plt.title('Entropy-Sigma Curve')
+        plt.title('CrossEntropy-Sigma Curve')
         plt.xlabel('Sigma')
-        plt.ylabel('Entropy')
+        plt.ylabel('CrossEntropy')
         plt.xscale('log')
         plt.ylim(0,self.height*1.5)
         # plt.yscale('log')
