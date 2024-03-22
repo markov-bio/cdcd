@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from .model import TransformerModel
+from .model import DiffusionTransformer
 
 
 
@@ -14,10 +14,11 @@ import numpy as np
 from .scheduling import AdaptiveSchedule
 from .loss import Loss
 from .conditioning import TimeConditioning
-from .model import TransformerModel
+from .model import DiffusionTransformer
+from .utils import bmult
 
 class Diffusion(nn.Module):
-    def __init__(self, model:TransformerModel, loss:Loss, conditioning:TimeConditioning):
+    def __init__(self, model:DiffusionTransformer, loss:Loss):
         super().__init__()
 
         self.model=model
@@ -26,28 +27,25 @@ class Diffusion(nn.Module):
         self.embedder= loss.embedder
         self.un_embedder=loss.un_embedder
         self.schedule=loss.schedule
-        
-        self.conditioning=conditioning
 
         self.n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
         
     def make_sample(self,tokens:torch.Tensor):
+        attn_mask=tokens!=self.embedder.num_embeddings
 
         t = self.schedule.sample(shape=(tokens.shape[0],))
         sigma = t.to(tokens.device)  #Index on cpu then send resulting tensor to cuda
 
         x=self.embedder(tokens) 
-        x=x + einops.einsum(torch.randn_like(x), sigma, 'b ..., b -> b ...') 
+        x=x + bmult(torch.randn_like(x), sigma) 
         standard_deviation_normalizer=torch.sqrt(torch.tensor(self.embedder.embed_dim)/(sigma**2+1))
-        x=einops.einsum(x,standard_deviation_normalizer,'b ..., b -> b ...')
+        x=bmult(x,standard_deviation_normalizer)
         
-        return x,sigma
+        return x,sigma,attn_mask
 
     # for Composer, we need this to be called forward()
-    def forward(self,x,sigma):
-        conditioning=self.conditioning(sigma) 
-
-        x_0=self.model(x,conditioning)
+    def forward(self,x,sigma,attn_mask=None):
+        x_0=self.model(x,sigma,attn_mask)
         return x_0
 
     def alphaXscore(self,x,sigma):
@@ -79,7 +77,6 @@ class Diffusion(nn.Module):
 
         timesteps=self.schedule.make_timesteps(n_steps,tmax=noise_level,device=device).unsqueeze(1)
 
-        sequence_lenght=x.shape[2]
         for i in tqdm(range(n_steps-1)):        
             
             delta_x = self.alphaXscore(x, timesteps[i])

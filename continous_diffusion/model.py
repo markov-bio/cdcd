@@ -1,42 +1,38 @@
+import einops
 import torch
 from torch import nn, Tensor
-from torch.nn import functional as F
-import math
 
+from .conditioning import TimeConditioning
 from .DiT_block import DiTBlock
-# taken from https://pytorch.org/tutorials/beginner/transformer_tutorial.html
-class TransformerModel(nn.Module):
-
-    def __init__(self, embed_dim, num_heads, cond_dim, n_blocks, max_len=5000):
+from .RoPe import RotaryEmbedding
+from .utils import bmult
+class DiffusionTransformer(nn.Module):
+    def __init__(self, embed_dim, qkv_dim, num_heads, cond_dim, n_blocks, max_len=5000):
         super().__init__()
-        self.pos_encoder = PositionalEncoding(embed_dim)
+        # ensure the embedding dimension is compatible with the number of heads
+        assert qkv_dim % num_heads == 0 and qkv_dim != num_heads, "embedding dimension must be divisible by number of heads and not equal to it."
 
-        self.DiT_blocks=nn.Sequential(*[DiTBlock(embed_dim,num_heads,cond_dim,max_len) for _ in range(n_blocks)])
+        self.rope = RotaryEmbedding(qkv_dim // num_heads)
 
-    def forward(self, x: Tensor, conditioning:Tensor) -> Tensor:
-        x = F.normalize(x,p=2,dim=-1) #critical modification
-        x = self.pos_encoder(x)
-        for block in self.DiT_blocks:
-            x=x+block(x, conditioning)
-        return x
-    
-    
-class PositionalEncoding(nn.Module):
+        self.time_conditioning = TimeConditioning(cond_dim, cond_dim)
 
-    def __init__(self, embed_dim: int,  max_len: int = 5000):
-        super().__init__()
+        self.dit_blocks = nn.Sequential(
+            *[DiTBlock(embed_dim, qkv_dim, num_heads, cond_dim, self.rope, max_len) for _ in range(n_blocks)]
+        )
 
-        position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, embed_dim, 2) * (-math.log(10000.0) / embed_dim))
-        pe = torch.zeros(max_len, embed_dim)
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe.unsqueeze(0))
+    def forward(self, x: Tensor, sigma: Tensor, attn_mask: Tensor = None) -> Tensor:
+        # clone the input to use later for residual connection
+        res = x.clone()
+        conditioning = self.time_conditioning(sigma)
+        attn_mask = transform_attn_mask(attn_mask)
 
-    def forward(self, x: Tensor) -> Tensor:
-        """
-        Arguments:
-            x: Tensor, shape ``[batch_size, seq_len, embedding_dim]``
-        """
-        x = x + self.pe[:,:x.size(1)]
-        return x
+        # apply the sequence of dit blocks
+        for block in self.dit_blocks:
+            x = x + block(x, conditioning, attn_mask)
+        
+        # combine the residuals and the transformed input
+        return bmult(res,1-torch.tanh(sigma))+bmult(x,torch.tanh(sigma))
+
+def transform_attn_mask(attn_mask):
+    """Transform the attention mask for broadcasting."""
+    return einops.einsum(attn_mask,attn_mask, 'b l, b m -> b l m').unsqueeze(1)

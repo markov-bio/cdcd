@@ -8,6 +8,7 @@ class Embedder(nn.Module):
     def __init__(self, num_embeddings, embed_dim):
         super().__init__()
         self.embedding = nn.Embedding(num_embeddings, embed_dim)
+        self.num_embeddings = num_embeddings
         self.embed_dim=embed_dim
     
     def forward(self, x):
