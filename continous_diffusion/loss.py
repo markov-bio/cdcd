@@ -14,7 +14,7 @@ class Loss(nn.Module):
         self.un_embedder=UnEmbedder(embedder)
         self.schedule=schedule
         
-        self.ce=nn.CrossEntropyLoss(reduction='none')
+        self.ce=nn.CrossEntropyLoss(reduction='none',ignore_index=embedder.num_embeddings-1)
         
 
     def forward(self,target_tokens:torch.Tensor, output_embeddings:torch.Tensor, sigma:float):

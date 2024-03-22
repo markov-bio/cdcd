@@ -34,20 +34,20 @@ def apply_scale_shift(x, scale, shift=None):
 
 
 class SelfAttention(nn.Module):
-    def __init__(self,embed_dim:int,num_heads:int,rope:RotaryEmbedding):
+    def __init__(self,embed_dim:int,qkv_dim:int,num_heads:int,rope:RotaryEmbedding):
         super().__init__()
 
         self.embed_dim=embed_dim
         self.num_heads=num_heads
-        self.linear=nn.Linear(embed_dim,3*embed_dim) #this can be generalized
+        self.linear=nn.Linear(embed_dim,3*qkv_dim) #this can be generalized
 
-        self.feedforward=nn.Linear(embed_dim,embed_dim)
+        self.feedforward=nn.Linear(qkv_dim,embed_dim)
         nn.init.zeros_(self.feedforward.weight)
         nn.init.zeros_(self.feedforward.bias)
         
         self.rope=rope
 
-    def forward(self,x):
+    def forward(self,x,attn_mask=None):
 
         x=self.linear(x)
         x=einops.rearrange(x,'... l (h c) -> ... h l c', h=self.num_heads)       
@@ -59,7 +59,7 @@ class SelfAttention(nn.Module):
 
         q,k=self.rope(q,k)        
 
-        x=F.scaled_dot_product_attention(q,k,v, scale=1)
+        x=F.scaled_dot_product_attention(q,k,v, scale=1,attn_mask=attn_mask)
 
         x=einops.rearrange(x,'... h l c -> ... l (h c)')
 
@@ -68,7 +68,7 @@ class SelfAttention(nn.Module):
 
 
 class DiTBlock(nn.Module):
-    def __init__(self, embed_dim:int, num_heads:int, cond_dim:int, rope:RotaryEmbedding, max_len=5000):
+    def __init__(self, embed_dim:int,qkv_dim:int, num_heads:int, cond_dim:int, rope:RotaryEmbedding, max_len=5000):
         super().__init__()
         assert embed_dim>=2*num_heads and embed_dim%num_heads==0, 'the embed_dim must be a multiple of the number of heads'
         self.cond_dim=cond_dim
@@ -76,7 +76,7 @@ class DiTBlock(nn.Module):
 
         self.embed_dim=embed_dim 
         self.layernorm1=nn.LayerNorm(torch.broadcast_shapes((embed_dim,)))
-        self.attention=SelfAttention(embed_dim, num_heads,rope) 
+        self.attention=SelfAttention(embed_dim, qkv_dim, num_heads, rope) 
         
         self.layernorm2=nn.LayerNorm(torch.broadcast_shapes((embed_dim,)))
 
@@ -86,7 +86,7 @@ class DiTBlock(nn.Module):
         
         self.rope=rope
         
-    def forward(self,x:torch.Tensor,conditioning:torch.Tensor|None=None)->torch.Tensor:
+    def forward(self,x:torch.Tensor,conditioning:torch.Tensor|None=None, attn_mask=None)->torch.Tensor:
         """
         Args:
             x (torch.Tensor): input tensor (b, g, l, c) or (b, l, c)
@@ -103,7 +103,7 @@ class DiTBlock(nn.Module):
 
         x=self.layernorm1(x)
         x=apply_scale_shift(x,gamma_1,beta_1)
-        x=self.attention(x)
+        x=self.attention(x,attn_mask)
         x=apply_scale_shift(x,alpha_1)
         x=x+res
 
