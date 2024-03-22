@@ -8,15 +8,6 @@ from scipy.optimize import curve_fit
 from torch.distributions import Uniform, TransformedDistribution
 from torch.distributions.transforms import SigmoidTransform, AffineTransform
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-
-def get_codomain(function,tmin,tmax,*args):
-    
-    imax=function(tmax,*args)
-    imin=function(tmin,*args)
-
-    return imin,imax
 
 
 class AdaptiveSchedule(nn.Module):
@@ -160,9 +151,16 @@ class CauchySchedule(AdaptiveSchedule):
     def cdf(self, x, mu, sigma, height, offset):
         return (np.arctan((x - mu) / sigma) / np.pi + 0.5) * height + offset
 
-            
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
+def get_codomain(function,tmin,tmax,*args):
+    
+    imax=function(tmax,*args)
+    imin=function(tmin,*args)
+
+    return imin,imax
+    
     
     
 from torch.distributions import Transform, ComposeTransform

@@ -5,15 +5,17 @@ from torch import nn, Tensor
 from .conditioning import TimeConditioning
 from .DiT_block import DiTBlock
 from .RoPe import RotaryEmbedding
-
+from .utils import bmult
 class DiffusionTransformer(nn.Module):
     def __init__(self, embed_dim, qkv_dim, num_heads, cond_dim, n_blocks, max_len=5000):
         super().__init__()
         # ensure the embedding dimension is compatible with the number of heads
-        assert embed_dim % num_heads == 0 and embed_dim != num_heads, "embedding dimension must be divisible by number of heads and not equal to it."
+        assert qkv_dim % num_heads == 0 and qkv_dim != num_heads, "embedding dimension must be divisible by number of heads and not equal to it."
 
         self.rope = RotaryEmbedding(qkv_dim // num_heads)
+
         self.time_conditioning = TimeConditioning(cond_dim, cond_dim)
+
         self.dit_blocks = nn.Sequential(
             *[DiTBlock(embed_dim, qkv_dim, num_heads, cond_dim, self.rope, max_len) for _ in range(n_blocks)]
         )
@@ -34,6 +36,3 @@ class DiffusionTransformer(nn.Module):
 def transform_attn_mask(attn_mask):
     """Transform the attention mask for broadcasting."""
     return einops.einsum(attn_mask,attn_mask, 'b l, b m -> b l m').unsqueeze(1)
-
-def bmult(a,b):
-    return einops.einsum(a,b,'b ..., b -> b ...')

@@ -12,7 +12,6 @@ class Loss(nn.Module):
         self.un_embedder = UnEmbedder(embedder)
         self.schedule = schedule
         
-        # Initialize CrossEntropyLoss, ignoring the index for padding
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
 
     def forward(self, target_tokens: torch.Tensor, output_embeddings: torch.Tensor, sigma: float) -> torch.Tensor:
@@ -20,16 +19,18 @@ class Loss(nn.Module):
         logits = self.un_embedder(output_embeddings)
         logits = einops.rearrange(logits, 'b ... c -> b c (...)')
 
-        # Flatten target tokens and identify padding
+        # Flatten target tokens 
         target_tokens = target_tokens.flatten(start_dim=1)
-        padding_mask = target_tokens == self.embedder.num_embeddings - 1
 
-        # Compute cross-entropy loss, setting loss for padded tokens to zero
+        # Compute cross-entropy loss
         loss = self.cross_entropy_loss(logits, target_tokens)
+        
+        #averaging over the non-padding tokens
+        padding_mask = target_tokens == (self.embedder.num_embeddings-1)
         loss[padding_mask] = 0
         loss = loss.sum(dim=-1) / (padding_mask.shape[-1] - padding_mask.float().sum(dim=-1))
 
-        # Update the adaptive schedule with the current loss and sigma
+        # Update the adaptive schedule with the current loss and sigma (useful for plotting)
         self.schedule.add_data(loss, sigma)
 
         return loss.mean()

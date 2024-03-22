@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+from torch import nn, Tensor
 import einops
 
 class RotaryEmbedding(nn.Module):
@@ -39,7 +39,7 @@ class RotaryEmbedding(nn.Module):
         return pos_emb, scale
     
 
-    def forward(self, q:torch.Tensor, k:torch.Tensor):
+    def forward(self, q:Tensor, k:Tensor):
 
         pos,scale=self.get_rotary_embedding(q.shape[-2])
         q= (q * pos.cos() + rotate_half(q) * pos.sin())*scale

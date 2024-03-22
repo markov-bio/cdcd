@@ -15,6 +15,7 @@ from .scheduling import AdaptiveSchedule
 from .loss import Loss
 from .conditioning import TimeConditioning
 from .model import DiffusionTransformer
+from .utils import bmult
 
 class Diffusion(nn.Module):
     def __init__(self, model:DiffusionTransformer, loss:Loss):
@@ -36,9 +37,9 @@ class Diffusion(nn.Module):
         sigma = t.to(tokens.device)  #Index on cpu then send resulting tensor to cuda
 
         x=self.embedder(tokens) 
-        x=x + einops.einsum(torch.randn_like(x), sigma, 'b ..., b -> b ...') 
+        x=x + bmult(torch.randn_like(x), sigma) 
         standard_deviation_normalizer=torch.sqrt(torch.tensor(self.embedder.embed_dim)/(sigma**2+1))
-        x=einops.einsum(x,standard_deviation_normalizer,'b ..., b -> b ...')
+        x=bmult(x,standard_deviation_normalizer)
         
         return x,sigma,attn_mask
 
