@@ -1,21 +1,21 @@
 import torch
 from torch import nn
-
-from .model import DiffusionTransformer
-
+from torch.nn import functional as F
 
 
 import einops
 from tqdm import tqdm
-import torch 
-from torch.nn import functional as F
 import numpy as np
+import math
 
-from .scheduling import AdaptiveSchedule
+
+from .model import DiffusionTransformer
+from .scheduling import AdaptiveSchedule, CauchySchedule
 from .loss import Loss
 from .conditioning import TimeConditioning
 from .model import DiffusionTransformer
 from .utils import bmult
+from .embedding import Embedder
 
 class Diffusion(nn.Module):
     def __init__(self, model:DiffusionTransformer, loss:Loss):
@@ -36,10 +36,10 @@ class Diffusion(nn.Module):
         t = self.schedule.sample(shape=(tokens.shape[0],))
         sigma = t.to(tokens.device)  #Index on cpu then send resulting tensor to cuda
 
-        x=self.embedder(tokens) 
-        x=x + bmult(torch.randn_like(x), sigma) 
-        standard_deviation_normalizer=torch.sqrt(torch.tensor(self.embedder.embed_dim)/(sigma**2+1))
-        x=bmult(x,standard_deviation_normalizer)
+        x = self.embedder(tokens) * math.sqrt(self.embedder.embed_dim)
+        x = x + bmult(torch.randn_like(x), sigma) 
+        c_in=torch.sqrt(1/(sigma**2+1))
+        x = bmult(x,c_in)
         
         return x,sigma,attn_mask
 
@@ -86,3 +86,24 @@ class Diffusion(nn.Module):
             assert torch.any(torch.isnan(x)).item() is False, 'generator output is NaN'
         
         return x 
+
+        
+
+        
+class DiffusionModel(Diffusion):
+
+    def __init__(self, 
+        embed_dim,
+        qkv_dim,
+        num_heads,
+        cond_dim,
+        n_blocks,
+        vocab_size,
+        device='cpu'
+        ):
+        dit=DiffusionTransformer(embed_dim,qkv_dim,num_heads,cond_dim,n_blocks)
+        embedder=Embedder(vocab_size,embed_dim)
+        schedule=CauchySchedule(0.01,200,0,0.3,math.log(vocab_size),0)
+        loss=Loss(embedder,schedule)
+        super().__init__(dit,loss)
+        self.to(device)

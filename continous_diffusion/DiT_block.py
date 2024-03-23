@@ -28,7 +28,7 @@ class DiTBlock(nn.Module):
         nn.init.zeros_(self.feedforward.bias)
         
         
-    def forward(self,x:torch.Tensor,t_conditioning:torch.Tensor, attn_mask)->torch.Tensor:
+    def forward(self,x:torch.Tensor,t_conditioning:torch.Tensor, attn_mask=None)->torch.Tensor:
         """
         Args:
             x (torch.Tensor): input tensor (b, l, c)

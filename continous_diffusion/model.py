@@ -31,8 +31,11 @@ class DiffusionTransformer(nn.Module):
             x = x + block(x, conditioning, attn_mask)
         
         # combine the residuals and the transformed input
-        return bmult(res,1-torch.tanh(sigma))+bmult(x,torch.tanh(sigma))
+        c_skip=1-torch.tanh(sigma)
+        c_out =  torch.tanh(sigma)
+        return bmult(res,c_skip)+bmult(x,c_out)
 
 def transform_attn_mask(attn_mask):
     """Transform the attention mask for broadcasting."""
+    if attn_mask==None: return None
     return einops.einsum(attn_mask,attn_mask, 'b l, b m -> b l m').unsqueeze(1)

@@ -1,5 +1,5 @@
 
-from .diffusion import Diffusion
+from .diffusion import Diffusion, DiffusionModel
 from .model import DiffusionTransformer
 from .loss import Loss
 from .embedding import Embedder
