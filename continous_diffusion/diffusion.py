@@ -38,8 +38,6 @@ class Diffusion(nn.Module):
 
         x = self.embedder(tokens) * math.sqrt(self.embedder.embed_dim)
         x = x + bmult(torch.randn_like(x), sigma) 
-        c_in=torch.sqrt(1/(sigma**2+1))
-        x = bmult(x,c_in)
         
         return x,sigma,attn_mask
 
@@ -103,7 +101,7 @@ class DiffusionModel(Diffusion):
         ):
         dit=DiffusionTransformer(embed_dim,qkv_dim,num_heads,cond_dim,n_blocks)
         embedder=Embedder(vocab_size,embed_dim)
-        schedule=CauchySchedule(0.01,200,0,0.3,math.log(vocab_size),0)
+        schedule=CauchySchedule(0.01,200,3,3,math.log(vocab_size),0)
         loss=Loss(embedder,schedule)
         super().__init__(dit,loss)
         self.to(device)

@@ -21,19 +21,26 @@ class DiffusionTransformer(nn.Module):
         )
 
     def forward(self, x: Tensor, sigma: Tensor, attn_mask: Tensor = None) -> Tensor:
-        # clone the input to use later for residual connection
-        res = x.clone()
-        conditioning = self.time_conditioning(sigma)
+        # clone the input to use later for skip connection   
+        skip = x.clone()
+
+        # define the preconditioning
+        c_noise=torch.log(sigma)/4
+        c_skip= 1/(1+sigma**2)
+        c_in=torch.sqrt(1/(1+sigma**2))
+        c_out = sigma/torch.sqrt(1+sigma**2)
+        
+        x = bmult(x,c_in)
+        conditioning = self.time_conditioning(c_noise)
+
         attn_mask = transform_attn_mask(attn_mask)
 
         # apply the sequence of dit blocks
         for block in self.dit_blocks:
             x = x + block(x, conditioning, attn_mask)
         
-        # combine the residuals and the transformed input
-        c_skip=1-torch.tanh(sigma)
-        c_out =  torch.tanh(sigma)
-        return bmult(res,c_skip)+bmult(x,c_out)
+        # add the precoditioning and the skip connection
+        return bmult(skip,c_skip)+bmult(x,c_out)
 
 def transform_attn_mask(attn_mask):
     """Transform the attention mask for broadcasting."""
