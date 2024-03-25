@@ -102,13 +102,13 @@ for epoch in range(num_epochs):
 ```
 And you should see something like this
 
+<img width="1109" alt="Screenshot 2024-03-25 at 15 51 06" src="https://github.com/markov-bio/cdcd/assets/47751420/8ee70a6c-18ee-4730-b2d7-99e80d6d3427">
 
-![plot](training_example.png)
 It represents the crossentropy loss of the model as a function of the noise $\sigma$ added. The more recent datapoints are colored darker.
 
 The blue curve represents the fit of $F(t)$ (learnt unormalized CFT)
 
-##### Comparison of the result with the CDCD paper
+#### Comparison of the result with the CDCD paper
 Checking with a ruler it seems that the curve obtained in our experiment is pretty much identical to the one obtained by the autors in the figure 2 of the CDCD paper
 ![plot](cdcd_noise_schedule.png)
 
