@@ -98,7 +98,7 @@ class AdaptiveSchedule(nn.Module):
         t = np.logspace(np.log10(self.tmin), np.log10(self.tmax), 500, base=10.)
         s = self.cdf(t, *self.optimal_parameters.detach().cpu().tolist())
 
-        plt.plot(t, s, label='Learnt unnormalized CFD')
+        plt.plot(t, s, color='purple', label='Learnt unnormalized CFD')
         plt.title('CrossEntropy-Sigma Curve')
         plt.xlabel('Sigma')
         plt.ylabel('CrossEntropy')
