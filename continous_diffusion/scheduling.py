@@ -84,6 +84,7 @@ class AdaptiveSchedule(nn.Module):
 
     def plot_entropy_time_curve(self, filename='et.png'):
         plt.close()
+        plt.figure(figsize=(16, 4)) 
         # Calculate logarithmic indices for coloring
         indices = np.arange(1, len(self.times) + 1)
         log_indices = np.log(indices)[::-1]  # Reverse to give more weight to recent points
@@ -97,12 +98,13 @@ class AdaptiveSchedule(nn.Module):
         t = np.logspace(np.log10(self.tmin), np.log10(self.tmax), 500, base=10.)
         s = self.cdf(t, *self.optimal_parameters.detach().cpu().tolist())
 
-        plt.plot(t, s, label='Best fit')
+        plt.plot(t, s, label='Learnt unnormalized CFD')
         plt.title('CrossEntropy-Sigma Curve')
         plt.xlabel('Sigma')
         plt.ylabel('CrossEntropy')
         plt.xscale('log')
-        plt.ylim(0,self.height*1.5)
+        plt.ylim(-0.2,7.2)
+        plt.xlim(0.7,200)
         # plt.yscale('log')
         plt.legend()
 
