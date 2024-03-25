@@ -190,4 +190,4 @@ encoded_data*
 encoded_train_data*
 figures/
 evaluation/
-
+checkpoints/*

@@ -6,11 +6,11 @@ from .embedding import Embedder, UnEmbedder
 from .scheduling import AdaptiveSchedule
 
 class Loss(nn.Module):
-    def __init__(self, embedder: Embedder, schedule: AdaptiveSchedule):
+    def __init__(self, embedder: Embedder, noise_schedule: AdaptiveSchedule):
         super().__init__()
         self.embedder = embedder
         self.un_embedder = UnEmbedder(embedder)
-        self.schedule = schedule
+        self.noise_schedule = noise_schedule
         
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction='none')
 
@@ -31,6 +31,6 @@ class Loss(nn.Module):
         loss = loss.sum(dim=-1) / (padding_mask.shape[-1] - padding_mask.float().sum(dim=-1))
 
         # Update the adaptive schedule with the current loss and sigma (useful for plotting)
-        self.schedule.add_data(loss, sigma)
+        self.noise_schedule.add_data(loss, sigma)
 
         return loss.mean()
