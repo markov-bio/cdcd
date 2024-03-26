@@ -22,6 +22,7 @@ class AdaptiveSchedule(nn.Module):
         self.height = height
         self.offset = offset
 
+        self.parameters_history=[]
         self.set_parameters([mu,sigma,height,offset])
 
         self.transforms = None  # To be defined in child classes
@@ -32,6 +33,7 @@ class AdaptiveSchedule(nn.Module):
     
     def set_parameters(self, params):
         self.optimal_parameters = nn.Parameter(torch.tensor(params,device='cpu'), requires_grad=False)
+        self.parameters_history.append(params)
     
     def sample(self, shape):
         return self.distribution.sample(shape)
@@ -43,6 +45,7 @@ class AdaptiveSchedule(nn.Module):
         entropy=self.entropy[-history:] if len(self.entropy)>history else self.entropy
 
         #i'm not using pytorch to find optimal parameters to fit the sigmoid because it might mess with the optimizer state
+        offset_lower_bound=-self.cdf(0,self.mu, self.sigma, self.height, 0)
         try:
             optimal_parameters, _ = curve_fit(self.cdf, times, entropy, self.optimal_parameters.cpu().numpy(), bounds=((0,0,0,-np.inf),(np.inf,np.inf,np.inf,np.inf)))
         except RuntimeError as e:
@@ -83,6 +86,11 @@ class AdaptiveSchedule(nn.Module):
         pass 
 
     def plot_entropy_time_curve(self, filename='et.png'):
+        history_cutoff=int(1e5)
+        if len(self.times)>=history_cutoff:
+            self.times=self.times[-history_cutoff:]
+            self.entropy=self.entropy[-history_cutoff:]
+
         plt.close()
         plt.figure(figsize=(16, 4)) 
         # Calculate logarithmic indices for coloring
@@ -100,6 +108,37 @@ class AdaptiveSchedule(nn.Module):
 
         plt.plot(t, s, color='purple', label='Learnt unnormalized CFD')
         plt.title('CrossEntropy-Sigma Curve')
+        plt.xlabel('Sigma')
+        plt.ylabel('CrossEntropy')
+        plt.xscale('log')
+        plt.ylim(-0.2,7.2)
+        plt.xlim(0.7,200)
+        # plt.yscale('log')
+        plt.legend()
+
+        # Save the plot to a file
+        plt.savefig(filename)
+        plt.show()
+
+    def plot_training_curves(self,title='CrossEntropy-Sigma Curve',filename='curves.png'):
+        plt.close()
+        plt.figure(figsize=(16, 4)) 
+
+        
+        # Calculate logarithmic indices for coloring
+        indices = np.arange(1, len(self.parameters_history))
+        log_indices = np.log(indices)[::-1]  # Reverse to give more weight to recent points
+        log_indices = (log_indices - np.min(log_indices)) / (np.max(log_indices) - np.min(log_indices))
+
+        cmap=plt.get_cmap('viridis')
+        colors=cmap(log_indices)
+        # Plot the best fit function
+        for p,c in zip(self.parameters_history[1:],colors):
+            t = np.logspace(np.log10(self.tmin), np.log10(self.tmax), 500, base=10.)
+            s = self.cdf(t, *p)
+            plt.plot(t, s, color=c)
+
+        plt.title(title)
         plt.xlabel('Sigma')
         plt.ylabel('CrossEntropy')
         plt.xscale('log')

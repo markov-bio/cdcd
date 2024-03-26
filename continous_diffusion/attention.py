@@ -1,3 +1,4 @@
+import math
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -19,6 +20,8 @@ class SelfAttention(nn.Module):
         
         self.rope=rope
 
+        self.scale=nn.Parameter(torch.tensor(0.))
+
     def forward(self,x,attn_mask=None):
 
         x=self.linear(x)
@@ -26,10 +29,10 @@ class SelfAttention(nn.Module):
         q,k,v=x.chunk(3,dim=-1)
 
         # Using QK-norm
-        q=F.normalize(q,p=2,dim=-1)
+        q=F.normalize(q,p=2,dim=-1)*torch.exp(self.scale)
         k=F.normalize(k,p=2,dim=-1)
 
-        q,k=self.rope(q,k)        
+        q,k=self.rope(q,k)
 
         x=F.scaled_dot_product_attention(q,k,v, scale=1, attn_mask=attn_mask)
 
