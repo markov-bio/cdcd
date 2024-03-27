@@ -24,7 +24,7 @@ class Embedder(nn.Module):
     @property
     def weight(self) -> torch.Tensor:
         # Return normalized weights as a property
-        return F.normalize(self.embedding.weight, p=2, dim=-1)
+        return self.embedding.weight
         
 
 class UnEmbedder(nn.Module):

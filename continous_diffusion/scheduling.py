@@ -45,9 +45,9 @@ class AdaptiveSchedule(nn.Module):
         entropy=self.entropy[-history:] if len(self.entropy)>history else self.entropy
 
         #i'm not using pytorch to find optimal parameters to fit the sigmoid because it might mess with the optimizer state
-        offset_lower_bound=-self.cdf(0,self.mu, self.sigma, self.height, 0)
+        offset_lower_bound=-self.cdf(0,self.mu, self.sigma, self.height, 0) #this is an approximation but it gets better and as the training progresses
         try:
-            optimal_parameters, _ = curve_fit(self.cdf, times, entropy, self.optimal_parameters.cpu().numpy(), bounds=((0,0,0,-np.inf),(np.inf,np.inf,np.inf,np.inf)))
+            optimal_parameters, _ = curve_fit(self.cdf, times, entropy, (self.mu,self.sigma,self.height, offset_lower_bound+1e-3), bounds=((0,0,0,offset_lower_bound),(np.inf,np.inf,np.inf,np.inf)))
         except RuntimeError as e:
             optimal_parameters = [.5,.5,np.log(self.vocab_size),0]
             print(e,'reverting to self.optimal_parameters =',optimal_parameters)

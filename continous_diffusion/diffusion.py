@@ -92,7 +92,7 @@ class DiffusionModel(Diffusion):
         ):
         dit=DiffusionTransformer(embed_dim,qkv_dim,num_heads,cond_dim,n_blocks)
         embedder=Embedder(vocab_size,embed_dim)
-        schedule=CauchySchedule(0.01,200,3,3,math.log(vocab_size),0)
+        schedule=CauchySchedule(0.01,200, mu=3.0171,  sigma=1.7785,  height=6.5539, offset=-1.2272)
         loss=Loss(embedder,schedule)
         super().__init__(dit,loss)
         self.to(device)
