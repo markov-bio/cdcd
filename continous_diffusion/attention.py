@@ -3,7 +3,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import einops
-
+from torch.nn.functional import softmax
+from matplotlib import pyplot as plt
 from .RoPe import RotaryEmbedding
 
 class SelfAttention(nn.Module):

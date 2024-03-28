@@ -19,7 +19,7 @@ class Embedder(nn.Module):
 
     def expected_embedding(self, x):
         out = F.linear(x, self.weight.t())
-        return F.normalize(out,p=2,dim=-1)
+        return out
     
     @property
     def weight(self) -> torch.Tensor:

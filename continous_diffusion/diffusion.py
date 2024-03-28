@@ -2,7 +2,6 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-
 from tqdm import tqdm
 import math
 
@@ -26,7 +25,6 @@ class Diffusion(nn.Module):
         self.noise_schedule=loss.noise_schedule
 
         self.n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        
     def make_sample(self,tokens:torch.Tensor):
         attn_mask=tokens!=self.embedder.num_embeddings
 
@@ -42,8 +40,7 @@ class Diffusion(nn.Module):
         x_0=self.model(x,sigma,attn_mask)
         return x_0
 
-    def alphaXscore(self,x,sigma):
-        #it is called alphaXscore because it returns alpha*score
+    def delta_x(self,x,sigma):
         embeddings=self(x,sigma)
 
         prob=F.softmax(self.un_embedder(embeddings), dim=-1)
@@ -64,17 +61,17 @@ class Diffusion(nn.Module):
         return self.denoise(x,self.noise_schedule.tmax,n_steps,device)
     
     @torch.no_grad()
-    def denoise(self, x, noise_level, n_steps, device='cpu'):
+    def denoise(self, x:torch.Tensor, noise_level, n_steps, device='cpu'):
 
         timesteps=self.noise_schedule.make_timesteps(n_steps,tmax=noise_level,device=device).unsqueeze(1)
 
         for i in tqdm(range(n_steps-1)):        
             
-            delta_x = self.alphaXscore(x, timesteps[i])
+            delta_x = self.delta_x(x, timesteps[i])
             delta_t=timesteps[i+1]-timesteps[i]
             x = x + delta_x * delta_t
         
-        return x 
+        return self.model(x,timesteps[-1]) 
 
         
 
